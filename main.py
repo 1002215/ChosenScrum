@@ -16,15 +16,22 @@ pwm.setPWMFreq(20)
 # Create the flask framework
 app = Flask(__name__, template_folder='templates')
 
-# Global list to store logs for display on the webpage
-log_messages = []
+with open("filename.txt", "r") as f:
+    log_messages = []
+    for line in f:
+        log_messages.append(line.strip())
+
+def save_list(lst, filename="filename.txt"):
+    with open(filename, "w") as f:
+        for item in lst:
+            f.write(f"{item}\n")
 
 def log_action(message):
     logging.info(message)
     log_messages.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {message}")
     # Limit log list size if needed
-    if len(log_messages) > 100:
-        log_messages.pop(0)
+    save_list(log_messages)
+
 
         # Endpoint to retrieve logs as JSON
 @app.route('/logs', methods=['GET'])
