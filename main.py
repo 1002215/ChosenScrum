@@ -198,6 +198,9 @@ def console():
 @app.route('/screen/', methods = ['GET', 'POST'])
 def screen():
     return render_template('screen.html')
+@app.route('/video', methods = ['GET', 'POST'])
+def video():
+    return render_template('video.html')
 
 if __name__ == "__main__": # This runs the app
     app.run(host='192.168.1.25', debug=True, port=5123, use_reloader=False) # Where the API will be host
