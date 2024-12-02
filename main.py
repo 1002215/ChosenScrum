@@ -186,7 +186,6 @@ def buttons():
        if action == 'left':
            send_request('http://192.168.1.25:5123/left')
        if action == 'stop':
-           send_request('http://192.168.1.25:5123/stop')
         
    return render_template('buttons.html') # Use the buttons html file for the aesthetics
    
