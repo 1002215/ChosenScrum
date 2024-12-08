@@ -178,15 +178,20 @@ def buttons():
        jsondata = request.get_json()
        action = jsondata.get('action')
        if action == 'fwd':
-           send_request('http://192.168.1.25:5123/fwd')
+           send_request('http://192.168.240.20:5123/fwd')
+           log_action(request)
        if action == 'bwd':
-           send_request('http://192.168.1.25:5123/bwd')
+           send_request('http://192.168.240.20:5123/bwd')
+           log_action(request)
        if action == 'right':
-           send_request('http://192.168.1.25:5123/right')
+           send_request('http://192.168.240.20:5123/right')
+           log_action(request)
        if action == 'left':
-           send_request('http://192.168.1.25:5123/left')
+           send_request('http://192.168.240.20:5123/left')
+           log_action(request)
        if action == 'stop':
-        
+           send_request('http://192.168.240.20:5123/stop')
+           log_action(request)
    return render_template('buttons.html') # Use the buttons html file for the aesthetics
    
 # Show the console log front end
@@ -198,8 +203,22 @@ def console():
 def screen():
     return render_template('screen.html')
 @app.route('/video', methods = ['GET', 'POST'])
-def video():
-    return render_template('video.html')
+def gen(camera):
+   while True:
+       frame = camera.get_frame()
+       yield (b'--frame\r\n'
+              b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+
+
+
+@app.route('/video_feed_page')
+def video_feed_page():
+    return render_template('video_feed.html')  # This renders the page with the stream
+
+@app.route('/video_feed')
+def video_feed():
+    return Response(gen(VideoCamera()),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == "__main__": # This runs the app
     app.run(host='192.168.1.25', debug=True, port=5123, use_reloader=False) # Where the API will be host
