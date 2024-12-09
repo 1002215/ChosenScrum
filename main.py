@@ -168,4 +168,4 @@ def video_feed():
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == "__main__": # This runs the app
-    app.run(host='192.168.1.25', debug=True, port=5123, use_reloader=False) # Where the API will be host
+    app.run(host='192.168.240.20', debug=True, port=5123, use_reloader=False) # Where the API will be host
