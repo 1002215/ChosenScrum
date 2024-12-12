@@ -10,7 +10,7 @@ class TankRobot:
         self.BIN1 = 3 # Controls direction of the second motor
         self.BIN2 = 4 # Controls the opposite direction of the second motor
 
-# Gets the tank to move forward before stopping, taking in speed as a parameter
+# Gets the tank to move forward, taking in speed as a parameter
     def move_fwd(self, speed):
         pwm.setDutycycle(self.PWMA, speed)
         pwm.setLevel(self.AIN1, 0)
