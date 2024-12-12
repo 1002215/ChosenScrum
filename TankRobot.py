@@ -10,7 +10,7 @@ class TankRobot:
         self.BIN1 = 3 # Controls direction of the second motor
         self.BIN2 = 4 # Controls the opposite direction of the second motor
 
-# Gets the tank to move forward for three seconds before stopping, taking in speed as a parameter
+# Gets the tank to move forward before stopping, taking in speed as a parameter
     def move_fwd(self, speed):
         pwm.setDutycycle(self.PWMA, speed)
         pwm.setLevel(self.AIN1, 0)
@@ -19,7 +19,7 @@ class TankRobot:
         pwm.setLevel(self.BIN1, 1)
         pwm.setLevel(self.BIN2, 0)
 
-# Gets the tank to move backward for three seconds before stopping, taking in speed as a parameter.
+# Gets the tank to move backward, taking in speed as a parameter.
     def move_backward(self, speed):
         pwm.setDutycycle(self.PWMA, speed)
         pwm.setLevel(self.AIN1, 1) # Left motor goes backwards
@@ -29,7 +29,7 @@ class TankRobot:
         pwm.setLevel(self.BIN2, 1)
 
 
-# Gets the tank to turn left for three seconds before stopping, taking in speed as a parameter.
+# Gets the tank to turn left, taking in speed as a parameter.
     def turn_left(self, speed):
         pwm.setDutycycle(self.PWMA, speed)
         pwm.setLevel(self.AIN1, 1)
@@ -39,7 +39,7 @@ class TankRobot:
         pwm.setLevel(self.BIN2, 0)  # Right motor goes forward
 
 
-# Gets the tank to turn right for three seconds before stopping, taking in speed as a parameter.
+# Gets the tank to turn right, taking in speed as a parameter.
     def turn_right(self, speed):
         pwm.setDutycycle(self.PWMA, speed) # Left motor goes forward
         pwm.setLevel(self.AIN1, 0)
