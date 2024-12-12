@@ -145,10 +145,13 @@ def buttons():
 @app.route('/logs', methods = ['GET', 'POST'])
 def console():
     return render_template('logs.html')
-#Show the screen separating the sebite into four parts: one with the buttons, one with the console log, and the rest as placeholders.
+    
+#Show the screen separating the webite into four parts: one with the buttons, one with the console log, and the rest as placeholders.
 @app.route('/screen/', methods = ['GET', 'POST'])
 def screen():
     return render_template('screen.html')
+
+
 @app.route('/video', methods = ['GET', 'POST'])
 def gen(camera):
    while True:
@@ -157,7 +160,7 @@ def gen(camera):
               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
 
 
-
+# Show the live camera feed front end
 @app.route('/video_feed_page')
 def video_feed_page():
     return render_template('video_feed.html')  # This renders the page with the stream
