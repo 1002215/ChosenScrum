@@ -1,7 +1,7 @@
 # camera.py
 import cv2 as cv
 
-
+# This class will take in a VideoCamera object and use it to return a video stream. The class will be able to get each frame and return each frame as a jpeg file.
 class VideoCamera(object):
     def __init__(self):
         self.video = cv.VideoCapture(0)  # Open the default webcam (change if needed)
