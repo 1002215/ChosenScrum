@@ -42,7 +42,7 @@ def hough_transform(image):
 
 
 
-def average_slope_intercept( lines):
+def average_slope_intercept(lines):
        """
        Find the slope and intercept of the left and right lanes of each image.
        Parameters:
@@ -72,7 +72,10 @@ def average_slope_intercept( lines):
                    right_weights.append((length))
        #
        left_lane = np.dot(left_weights, left_lines) / np.sum(left_weights) if len(left_weights) > 0 else None
+       #left_slope = (left_lane[0].y - left_lane[-1].y)/(left_lane[0].x - left_lane[-1].x)
        right_lane = np.dot(right_weights, right_lines) / np.sum(right_weights) if len(right_weights) > 0 else None
+       
+       #center_lane = right_lane
        return left_lane, right_lane
 
 
@@ -105,17 +108,28 @@ def lane_lines(image, lines):
                image: The input test image.
                lines: The output lines from Hough Transform.
        """
+       center_lane = []
        left_lane, right_lane = average_slope_intercept(lines)
        y1 = image.shape[0]
-       y2 = y1 * 0.6
+
+       m1, b1 = left_lane[0], left_lane[1]
+       n1 = 1/(math.sqrt(m1*m1+1))
+       m2, b2 = right_lane[0], right_lane[1]
+       n2 = 1/(math.sqrt(m2*m2+1))
+       center_slope = (n2*m2-n1*m1)/(n2-n1)
+       center_intercept = (n2*b2-n1*b1)/(n2-n1)
+       center_lane = [center_slope, center_intercept]
+       y2 = y1 * m1*((b2-b1)/(m1-m2))+b1
+
        left_line = pixel_points(y1, y2, left_lane)
        right_line = pixel_points(y1, y2, right_lane)
-       return left_line, right_line
+       center_line = pixel_points(y1, y2, center_lane)
+       return left_line, right_line, center_line
 
 
 
 
-def draw_lane_lines( image, lines, color=[255, 0, 0], thickness=12):
+def draw_lane_lines( image, lines, color=[0, 0, 255], thickness=20):
        """
        Draw lines onto the input image.
            Parameters:
@@ -125,11 +139,17 @@ def draw_lane_lines( image, lines, color=[255, 0, 0], thickness=12):
                thickness (Default = 12): Line thickness.
        """
        line_image = np.zeros_like(image)
-       for line in lines:
-           if line is not None:
-               cv2.line(line_image, *line, color, thickness)
-           else:
+
+       for i in range(len(lines)):
+            line = lines[i]
+            if line is not None:
+                if i == len(lines)-1:
+                    cv2.line(line_image, *line, [0,255,0], thickness)
+                else:
+                    cv2.line(line_image, *line, color, thickness)
+            else:
                 continue
+
        return cv2.addWeighted(image, 1.0, line_image, 1.0, 0.0)
 
 
