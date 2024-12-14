@@ -211,7 +211,22 @@ def generate_gray_frames():
        yield (b'--frame\r\n'
               b'Content-Type: image/jpeg\r\n\r\n' + buffer2.tobytes() + b'\r\n')
 
+def generate_color_frames():
+   """Generate color video frames."""
+   while True:
+       success, frame = camera.read()
+       if not success:
+           break
+       # Encode the color frame
+       ret1, buffer1 = cv2.imencode('.jpg', frame)
+       if not ret1:
+           print("Error: Failed to encode color frame")
+           break
 
+
+       # Yield color frame
+       yield (b'--frame\r\n'
+              b'Content-Type: image/jpeg\r\n\r\n' + buffer1.tobytes() + b'\r\n')
 
 
 @app.route('/')
