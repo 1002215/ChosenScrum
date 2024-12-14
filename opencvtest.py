@@ -1,132 +1,207 @@
 import sys
 import math
-import cv2 as cv
+import cv2
 import numpy as np
 from flask import Flask, render_template, Response
 
 
-
+camera = cv2.VideoCapture(0)
 
 app = Flask(__name__)
-
-
-
-
-camera = cv.VideoCapture(0)
-
-
-def draw_lines(img, lines, color=[0, 0, 255], thickness=10):
- if lines is None:
-     return img
- img = np.copy(img)
- line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
- for line in lines:
-     for x1, y1, x2, y2 in line:
-         cv.line(line_img, (x1, y1), (x2, y2), color, thickness)
- img = cv.addWeighted(img, 0.8, line_img, 1.0, 0.0)
- return img
-
 def region_of_interest(img, vertices):
     mask = np.zeros_like(img)
-    cv.fillPoly(mask, vertices, 255)
-    masked_image = cv.bitwise_and(img, mask)
+    cv2.fillPoly(mask, vertices, 255)
+    masked_image = cv2.bitwise_and(img, mask)
     
     return masked_image
 
 
 
-def generate_frames(frame):
-    height, width, _ = frame.shape
 
-    gray_frame = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
+def hough_transform(image):
+       """
+       Determine and cut the region of interest in the input image.
+       Parameter:
+           image: grayscale image which should be an output from the edge detector
+       """
+       # Distance resolution of the accumulator in pixels.
+       rho = 1
+       # Angle resolution of the accumulator in radians.
+       theta = np.pi / 180
+       # Only lines that are greater than threshold will be returned.
+       threshold = 20
+       # Line segments shorter than that are rejected.
+       minLineLength = 20
+       # Maximum allowed gap between points on the same line to link them
+       maxLineGap = 500
+       # function returns an array containing dimensions of straight lines
+       # appearing in the input image
+       return cv2.HoughLinesP(image, rho=rho, theta=theta, threshold=threshold,
+                              minLineLength=minLineLength, maxLineGap=maxLineGap)
 
-    blurred_frame = cv.GaussianBlur(gray_frame, (5, 5), 0)
-
-    canny_frame = cv.Canny(blurred_frame, 150, 300)
-
-    vertices = np.array([[(200, 100), (400, 100), (450, 300), (150, 300)]], dtype=np.int32)
-
-    region_interest = region_of_interest(canny_frame, vertices)
 
 
-    src_pts = np.float32([
+
+def average_slope_intercept( lines):
+       """
+       Find the slope and intercept of the left and right lanes of each image.
+       Parameters:
+           lines: output from Hough Transform
+       """
+       left_lines = []  # (slope, intercept)
+       left_weights = []  # (length,)
+       right_lines = []  # (slope, intercept)
+       right_weights = []  # (length,)
+
+
+       for line in lines:
+           for x1, y1, x2, y2 in line:
+               if x1 == x2:
+                   continue
+               slope = (y2 - y1) / (x2 - x1)
+               # calculating intercept of a line
+               intercept = y1 - (slope * x1)
+               # calculating length of a line
+               length = np.sqrt(((y2 - y1) ** 2) + ((x2 - x1) ** 2))
+               # slope of left lane is negative and for right lane slope is positive
+               if slope < 0:
+                   left_lines.append((slope, intercept))
+                   left_weights.append((length))
+               else:
+                   right_lines.append((slope, intercept))
+                   right_weights.append((length))
+       #
+       left_lane = np.dot(left_weights, left_lines) / np.sum(left_weights) if len(left_weights) > 0 else None
+       right_lane = np.dot(right_weights, right_lines) / np.sum(right_weights) if len(right_weights) > 0 else None
+       return left_lane, right_lane
+
+
+
+
+def pixel_points( y1, y2, line):
+       """
+       Converts the slope and intercept of each line into pixel points.
+           Parameters:
+               y1: y-value of the line's starting point.
+               y2: y-value of the line's end point.
+               line: The slope and intercept of the line.
+       """
+       if line is None:
+           return None
+       slope, intercept = line
+       x1 = int((y1 - intercept) / slope)
+       x2 = int((y2 - intercept) / slope)
+       y1 = int(y1)
+       y2 = int(y2)
+       return ((x1, y1), (x2, y2))
+
+
+
+
+def lane_lines(image, lines):
+       """
+       Create full lenght lines from pixel points.
+           Parameters:
+               image: The input test image.
+               lines: The output lines from Hough Transform.
+       """
+       left_lane, right_lane = average_slope_intercept(lines)
+       y1 = image.shape[0]
+       y2 = y1 * 0.6
+       left_line = pixel_points(y1, y2, left_lane)
+       right_line = pixel_points(y1, y2, right_lane)
+       return left_line, right_line
+
+
+
+
+def draw_lane_lines( image, lines, color=[255, 0, 0], thickness=12):
+       """
+       Draw lines onto the input image.
+           Parameters:
+               image: The input test image (video frame in our case).
+               lines: The output lines from Hough Transform.
+               color (Default = red): Line color.
+               thickness (Default = 12): Line thickness.
+       """
+       line_image = np.zeros_like(image)
+       for line in lines:
+           if line is not None:
+               cv2.line(line_image, *line, color, thickness)
+           else:
+                continue
+       return cv2.addWeighted(image, 1.0, line_image, 1.0, 0.0)
+
+
+
+
+
+
+
+
+
+def frame_processor(image):
+       height, width, _ = image.shape
+       """
+       Process the input frame to detect lane lines.
+       Parameters:
+           image: image of a road where one wants to detect lane lines
+           (we will be passing frames of video to this function)
+       """
+       # convert the RGB image to Gray scale
+       grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+       # applying gaussian Blur which removes noise from the image
+       # and focuses on our region of interest
+       # size of gaussian kernel
+       kernel_size = 5
+       # Applying gaussian blur to remove noise from the frames
+       blur = cv2.GaussianBlur(grayscale, (kernel_size, kernel_size), 0)
+       # first threshold for the hysteresis procedure
+       low_t = 50
+       # second threshold for the hysteresis procedure
+       high_t = 150
+       # applying canny edge detection and save edges in a variable
+       edges = cv2.Canny(blur, low_t, high_t)
+       # since we are getting too many edges from our image, we apply
+       # a mask polygon to only focus on the road
+       vertices = np.array([[(200, 100), (400, 100), (450, 300), (150, 300)]], dtype=np.int32)
+
+       # Will explain Region selection in detail in further steps
+       region = region_of_interest(edges, vertices)
+       # Applying hough transform to get straight lines from our image
+       # and find the lane lines
+       # Will explain Hough Transform in detail in further steps
+       '''src_pts = np.float32([
     [width * 0.2, height * 0.1],  
     [width * 0.8, height * 0.1],  
     [width * 0.85, height * 0.8],  
     [width * 0.15, height * 0.8]   
 ])
-    dst_pts = np.float32([[0, 0], [width, 0], [width, height], [0, height]])
+       dst_pts = np.float32([[0, 0], [width, 0], [width, height], [0, height]])
 
-    M = cv.getPerspectiveTransform(src_pts, dst_pts)
-    warped_frame = cv.warpPerspective(region_interest, M, (frame.shape[1], frame.shape[0]))
-
+       M = cv2.getPerspectiveTransform(src_pts, dst_pts)
+       warped_frame = cv2.warpPerspective(region, M, (image.shape[1], image.shape[0]))
+'''
   
-    lines = cv.HoughLinesP(
-        warped_frame,  
-        rho=1,
-        theta=np.pi / 180,
-        threshold=100,
-        minLineLength=100,
-        maxLineGap=20
-    )
-    left_line_x = []
-    left_line_y = []
-    right_line_x = []
-    right_line_y = []
-    if lines is not None and len(lines) > 0:
-        for line in lines:
-            for x1, y1, x2, y2 in line:
-                slope = (y2 - y1) / (x2 - x1)
-                if math.fabs(slope) < 0.5:
-                    continue
-                if slope <= 0:
-                    left_line_x.extend([x1, x2])
-                    left_line_y.extend([y1, y2])
-                else:
-                    right_line_x.extend([x1, x2])
-                    right_line_y.extend([y1, y2])
-
-    left_lines = [[(left_line_x[i], left_line_y[i], left_line_x[i+1], left_line_y[i+1]) for i in range(0, len(left_line_x)-1, 2)]]
-    right_lines = [[(right_line_x[i], right_line_y[i], right_line_x[i+1], right_line_y[i+1]) for i in range(0, len(right_line_x)-1, 2)]]
-
-# Now, you can use the draw_lines function to draw these lines on the image
-    frame_with_lines = draw_lines(frame, left_lines + right_lines, color=[0, 255, 0], thickness=5)
-
-    return frame_with_lines
-
-
-def generate_color_frames():
-   """Generate color video frames."""
-   while True:
-       success, frame = camera.read()
-       if not success:
-           break
-       # Encode the color frame
-       ret1, buffer1 = cv.imencode('.jpg', frame)
-       if not ret1:
-           print("Error: Failed to encode color frame")
-           break
-
-
-       # Yield color frame
-       yield (b'--frame\r\n'
-              b'Content-Type: image/jpeg\r\n\r\n' + buffer1.tobytes() + b'\r\n')
-
+       hough = hough_transform(region)
+       # lastly we draw the lines on our resulting frame and return it as output
+       result = draw_lane_lines(image, lane_lines(image, hough))
+       return result
 
 
 
 def generate_gray_frames():
    """Generate grayscale video frames."""
    while True:
-       success, fram = camera.read()
+       success, frame = camera.read()
        if not success:
            break
        # Convert to grayscale
-       fixed = generate_frames(fram)
+       fixed = frame_processor(frame)
 
 
        # Encode the grayscale frame
-       ret2, buffer2 = cv.imencode('.jpg', fixed)
+       ret2, buffer2 = cv2.imencode('.jpg', fixed)
        if not ret2:
            print("Error: Failed to encode grayscale frame")
            break
