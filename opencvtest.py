@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from flask import Flask, render_template, Response
 
+#floor = cv2.imread('Screenshot 2024-12-30 115147.png')
 
 camera = cv2.VideoCapture(0)
 
@@ -19,7 +20,22 @@ def region_of_interest(img, vertices):
 
 
 
-def hough_transform(image):
+'''def select_white_yellow(image):
+    converted = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
+    # white color mask
+    lower = np.uint8([  0, 200,   0])
+    upper = np.uint8([255, 255, 255])
+    white_mask = cv2.inRange(converted, lower, upper)
+    # yellow color mask
+    lower = np.uint8([ 10,   0, 100])
+    upper = np.uint8([ 40, 255, 255])
+    yellow_mask = cv2.inRange(converted, lower, upper)
+    # combine the mask
+    mask = cv2.bitwise_or(white_mask, yellow_mask)
+    return cv2.bitwise_and(image, image, mask = mask)'''
+
+#Identify straight lines using probabalistic hough transform
+def hough_transform(image, rotation_angle=0):
     """
     Determine and cut the region of interest in the input image.
     Parameter:
@@ -108,6 +124,7 @@ def lane_lines(image, lines):
     left_lane, right_lane = average_slope_intercept(lines)
 
     y1 = image.shape[0]
+
     
     if left_lane is None or right_lane is None:
         return None
@@ -155,6 +172,7 @@ def draw_lane_lines( image, lines, color=[0, 0, 255], thickness=20):
     return cv2.addWeighted(image, 1.0, line_image, 1.0, 0.0)
 
 def frame_processor(image):
+    image = cv2.resize(image, (500,301))
     height, width, _ = image.shape
     """
     Process the input frame to detect lane lines.
@@ -162,26 +180,45 @@ def frame_processor(image):
         image: image of a road where one wants to detect lane lines
         (we will be passing frames of video to this function)
     """
+    #blue hsv
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    lower_blue = np.array([100,100,100])
+    upper_blue = np.array([140,255,255])
+
+    mask = cv2.inRange(hsv_image, lower_blue, upper_blue)
+
+    hsvapplied = cv2.bitwise_and(image, image, mask=mask)
+    #cv2.imshow("HSV", mask)
+
     # convert the RGB image to Gray scale
-    grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    grayscale = cv2.cvtColor(hsvapplied, cv2.COLOR_BGR2GRAY)
+    #cv2.imshow("GRayscale", grayscale)
     # applying gaussian Blur which removes noise from the image
     # and focuses on our region of interest
     # size of gaussian kernel
-    kernel_size = 5
+    kernel_size = 13   
     # Applying gaussian blur to remove noise from the frames
     blur = cv2.GaussianBlur(grayscale, (kernel_size, kernel_size), 0)
+    #cv2.imshow("smoothing", blur)
     # first threshold for the hysteresis procedure
     low_t = 50
     # second threshold for the hysteresis procedure
     high_t = 150
     # applying canny edge detection and save edges in a variable
-    edges = cv2.Canny(blur, low_t, high_t)
+    edges = cv2.Canny(grayscale, low_t, high_t)
+    #cv2.imshow("edges",edges)
     # since we are getting too many edges from our image, we apply
     # a mask polygon to only focus on the road
-    vertices = np.array([[(200, 100), (400, 100), (450, 300), (150, 300)]], dtype=np.int32)
+    vertices = np.array([[(100, 100), (400, 100), (499,300), (0, 300)]], dtype=np.int32)
+    #cv2.polylines(image, vertices, isClosed=True, color=(0, 0, 255), thickness=2)
+
+# Display the image
+    #cv2.imshow("Trapezoid", image)
 
     # Will explain Region selection in detail in further steps
     region = region_of_interest(edges, vertices)
+    #cv2.imshow("region of interest", region)
     # Applying hough transform to get straight lines from our image
     # and find the lane lines
     # Will explain Hough Transform in detail in further steps
@@ -194,17 +231,17 @@ def frame_processor(image):
     dst_pts = np.float32([[0, 0], [width, 0], [width, height], [0, height]])
 
     M = cv2.getPerspectiveTransform(src_pts, dst_pts)
-    warped_frame = cv2.warpPerspective(region, M, (image.shape[1], image.shape[0]))
-
-    hough = hough_transform(warped_frame)
+    #warped_frame = cv2.warpPerspective(edges, M, (image.shape[1], image.shape[0]))
+    #cv2.imshow("perspective", warped_frame)
+    hough = hough_transform(region)
     # lastly we draw the lines on our resulting frame and return it as output
-    result = draw_lane_lines(image, lane_lines(image, hough))
-    return result
+    final = draw_lane_lines(image, lane_lines(image, hough))
+    return final
 
 
 
 def generate_gray_frames():
-    """Generate grayscale video frames."""
+    #Generate grayscale video frames.
     while True:
         success, frame = camera.read()
         if not success:
@@ -223,6 +260,21 @@ def generate_gray_frames():
             # Yield grayscale frame
             yield (b'--frame\r\n'
                     b'Content-Type: image/jpeg\r\n\r\n' + buffer2.tobytes() + b'\r\n')
+            '''
+    while True:
+       fixed = frame_processor(floor)
+       if fixed is not None:    
+        # Encode the grayscale frame
+            ret2, buffer2 = cv2.imencode('.jpg', fixed)
+            if not ret2:
+                print("Error: Failed to encode grayscale frame")
+                break
+
+
+            # Yield grayscale frame
+            yield (b'--frame\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n' + buffer2.tobytes() + b'\r\n')
+                    '''
 
 def generate_color_frames():
     """Generate color video frames."""
@@ -272,3 +324,6 @@ if __name__ == '__main__':
 
 
 
+'''
+
+frame_processor(floor)'''
