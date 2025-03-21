@@ -1,7 +1,7 @@
 # Chosen Scrum Vehicle Movement Version 1.0
 # Overview:
 # Gets the tank to turn left, taking in speed as a parameter
-# def move_backward(self, speed):
+# def turn_left(self, speed):
 #    Since it is in the TankRobot class, it must take in self as a parameter
 #    Takes in speed as the parameter
 
