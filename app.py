@@ -11,8 +11,8 @@
 
 
 from flask import Flask
-from auth_routes import auth_bp
-from video_routes import video_bp
+from auth import auth_bp
+from video_files import video_bp
 from log_routes import log_bp
 from db import create_database
 
