@@ -6,7 +6,7 @@ import os
 
 def ORB():
    img = cv.imread('templates/martian.png', 0)
-   img2 = cv.imread('templates/test.jpeg', 0)
+   img2 = cv.imread('templates/flat.png.jpeg', 0)
    img2 = cv.resize(img2, (312,380))
    img2 = cv.blur(img2, (15,15))
    #gray_img2 = cv.imread(img2, cv.IMREAD_GRAYSCALE)
@@ -27,8 +27,12 @@ def ORB():
       img3 = cv.drawMatches(img, keypoints1, img2, keypoints2, matches[:50], None, flags=2)
 
       plt.imshow(img3), plt.show()
+      print(num_matches)
+
       if num_matches > 5:
          print("we are not alone")
+      else:
+         print("no matches")
    except:
       print("no matches")
 
